@@ -71,6 +71,43 @@ Automatyczne tworzenie kopii zapasowej bazy danych.
 - Usuwa stare backupy (zostawia 10 najnowszych)
 - Pokazuje rozmiar i listę backupów
 
+### `clean.sh` - Czyszczenie systemu
+Czyści cache Docker i opcjonalnie dane projektu.
+
+```bash
+./scripts/clean.sh
+```
+
+**Co robi:**
+- Zatrzymuje wszystkie usługi
+- Czyści cache Docker i obrazy
+- Opcjonalnie usuwa volumes i node_modules
+
+### `debug.sh` - Diagnostyka systemu
+Sprawdza konfigurację i zbiera informacje diagnostyczne.
+
+```bash
+./scripts/debug.sh
+```
+
+**Co robi:**
+- Sprawdza pliki konfiguracyjne
+- Weryfikuje Docker i Docker Compose
+- Pokazuje zmienne środowiskowe
+- Analizuje strukturę projektu
+
+### `test-build.sh` - Test budowania
+Testuje budowanie kontenerów Docker bez uruchamiania.
+
+```bash
+./scripts/test-build.sh
+```
+
+**Co robi:**
+- Testuje build API
+- Testuje build Web
+- Weryfikuje Dockerfile
+
 ## 🎯 Typowe scenariusze użycia:
 
 ### Pierwsze uruchomienie:

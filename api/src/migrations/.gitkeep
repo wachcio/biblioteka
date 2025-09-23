@@ -1,0 +1,2 @@
+# This file ensures the migrations directory is tracked in git
+# TypeORM migrations will be generated here

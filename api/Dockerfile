@@ -35,8 +35,11 @@ RUN npm ci --only=production && npm cache clean --force
 # Copy built application from builder stage
 COPY --from=builder --chown=nestjs:nodejs /app/dist ./dist
 
-# Copy necessary files
-COPY --chown=nestjs:nodejs ./src/migrations ./src/migrations
+# Create migrations directory for TypeORM
+RUN mkdir -p ./src/migrations
+
+# Copy healthcheck script
+COPY --chown=nestjs:nodejs ./healthcheck.js ./healthcheck.js
 
 # Expose port
 EXPOSE 3000

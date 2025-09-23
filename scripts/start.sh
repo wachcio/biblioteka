@@ -21,11 +21,12 @@ fi
 
 # Start services
 echo -e "${BLUE}Starting Docker services...${NC}"
-docker-compose up -d
+echo -e "${BLUE}Note: Any warnings about unknown variables are harmless and come from Docker system${NC}"
+docker compose up -d
 
 # Show status
 echo -e "${BLUE}Checking service status...${NC}"
-docker-compose ps
+docker compose ps
 
 echo ""
 echo -e "${GREEN}🎉 System started successfully!${NC}"
