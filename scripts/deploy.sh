@@ -38,7 +38,7 @@ check_prerequisites() {
         exit 1
     fi
 
-    if ! command -v docker-compose &> /dev/null; then
+    if ! command -v docker compose &> /dev/null; then
         print_error "Docker Compose is not installed. Please install Docker Compose first."
         exit 1
     fi
@@ -64,15 +64,15 @@ deploy_services() {
     print_status "Building and starting services..."
 
     # Stop existing containers
-    docker-compose down --remove-orphans
+    docker compose down --remove-orphans
 
     # Build images
     print_status "Building Docker images..."
-    docker-compose build --no-cache
+    docker compose build --no-cache
 
     # Start services
     print_status "Starting services..."
-    docker-compose up -d
+    docker compose up -d
 
     print_success "Services started successfully"
 }
@@ -83,7 +83,7 @@ wait_for_services() {
 
     # Wait for database
     print_status "Waiting for database..."
-    until docker-compose exec -T db mysqladmin ping -h localhost --silent; do
+    until docker compose exec -T db mysqladmin ping -h localhost --silent; do
         echo -n "."
         sleep 2
     done
@@ -127,7 +127,7 @@ health_checks() {
     fi
 
     # Check database
-    if docker-compose exec -T db mysqladmin ping -h localhost --silent; then
+    if docker compose exec -T db mysqladmin ping -h localhost --silent; then
         print_success "Database health check passed"
     else
         print_error "Database health check failed"
@@ -138,7 +138,7 @@ health_checks() {
 # Show service status
 show_status() {
     print_status "Service Status:"
-    docker-compose ps
+    docker compose ps
 
     echo ""
     print_success "🎉 Deployment completed successfully!"
@@ -154,9 +154,9 @@ show_status() {
     echo "   User: john.doe@example.com / password123"
     echo ""
     echo "🐳 Docker commands:"
-    echo "   View logs: docker-compose logs -f"
-    echo "   Stop services: docker-compose down"
-    echo "   Restart services: docker-compose restart"
+    echo "   View logs: docker compose logs -f"
+    echo "   Stop services: docker compose down"
+    echo "   Restart services: docker compose restart"
 }
 
 # Main deployment process
@@ -173,7 +173,7 @@ main() {
         show_status
     else
         print_error "Health checks failed. Please check the logs:"
-        echo "docker-compose logs"
+        echo "docker compose logs"
         exit 1
     fi
 }
