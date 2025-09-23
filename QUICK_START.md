@@ -9,44 +9,40 @@ Docker Compose wymagał pliku `.env` w głównym katalogu projektu do odczytu zm
 
 ## 📋 Kroki do uruchomienia systemu:
 
-### 1. Przygotowanie środowiska
+### 🚀 Opcja 1: Szybkie uruchomienie (ZALECANE)
 ```bash
 # Upewnij się, że jesteś w głównym katalogu projektu
 cd /path/to/biblioteka
 
-# Utwórz plik .env z przykładowego pliku
-cp .env.example .env
-
-# (Opcjonalnie) Edytuj plik .env dla własnych potrzeb
-nano .env
+# Uruchom system jedną komendą
+./scripts/start.sh
 ```
 
-### 2. Weryfikacja konfiguracji
+### 🏭 Opcja 2: Pełny deployment (dla produkcji)
 ```bash
-# Sprawdź, czy plik .env istnieje
-ls -la .env
-
-# Sprawdź konfigurację Docker Compose
-docker-compose config --quiet
-```
-
-### 3. Uruchomienie systemu
-```bash
-# Uruchom wszystkie usługi
-docker-compose up -d
-
-# Lub użyj skryptu automatycznego
+# Kompleksowy deployment z weryfikacją
 ./scripts/deploy.sh
 ```
 
-### 4. Weryfikacja działania
+### 🔧 Opcja 3: Manualnie (dla zaawansowanych)
 ```bash
+# Utwórz plik .env z przykładowego pliku
+cp .env.example .env
+
+# Uruchom wszystkie usługi
+docker-compose up -d
+
 # Sprawdź status usług
 docker-compose ps
-
-# Sprawdź logi w razie problemów
-docker-compose logs -f
 ```
+
+## 📜 Dostępne skrypty:
+
+- **`./scripts/start.sh`** - Szybkie uruchomienie
+- **`./scripts/deploy.sh`** - Pełny deployment z health checks
+- **`./scripts/stop.sh`** - Zatrzymanie systemu
+- **`./scripts/logs.sh`** - Podgląd logów (interaktywny)
+- **`./scripts/backup.sh`** - Backup bazy danych
 
 ## 🔧 Rozwiązywanie problemów
 
