@@ -21,13 +21,6 @@ const AdminReservationsManagement: React.FC = () => {
     queryFn: () => apiService.getAllReservations(),
   });
 
-  // Approve reservation mutation
-  const approveMutation = useMutation({
-    mutationFn: (id: number) => apiService.approveReservation(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin', 'reservations'] });
-    },
-  });
 
   // Cancel reservation mutation
   const cancelMutation = useMutation({
@@ -47,7 +40,7 @@ const AdminReservationsManagement: React.FC = () => {
   });
 
   // Filter reservations
-  const filteredReservations = reservations.filter(reservation => {
+  const filteredReservations = Array.isArray(reservations) ? reservations.filter(reservation => {
     const matchesStatus = statusFilter === 'all' || reservation.status === statusFilter;
     const matchesSearch = !searchTerm ||
       reservation.book.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -55,13 +48,8 @@ const AdminReservationsManagement: React.FC = () => {
       reservation.user.email.toLowerCase().includes(searchTerm.toLowerCase());
 
     return matchesStatus && matchesSearch;
-  });
+  }) : [];
 
-  const handleApprove = (id: number) => {
-    if (window.confirm('Are you sure you want to approve this reservation?')) {
-      approveMutation.mutate(id);
-    }
-  };
 
   const handleCancel = (id: number) => {
     if (window.confirm('Are you sure you want to cancel this reservation?')) {
@@ -94,11 +82,11 @@ const AdminReservationsManagement: React.FC = () => {
   }
 
   const stats = {
-    total: reservations.length,
-    active: reservations.filter(r => r.status === 'active').length,
-    cancelled: reservations.filter(r => r.status === 'cancelled').length,
-    expired: reservations.filter(r => r.status === 'expired').length,
-    converted: reservations.filter(r => r.status === 'converted').length,
+    total: Array.isArray(reservations) ? reservations.length : 0,
+    active: Array.isArray(reservations) ? reservations.filter(r => r.status === 'active').length : 0,
+    cancelled: Array.isArray(reservations) ? reservations.filter(r => r.status === 'cancelled').length : 0,
+    expired: Array.isArray(reservations) ? reservations.filter(r => r.status === 'expired').length : 0,
+    converted: Array.isArray(reservations) ? reservations.filter(r => r.status === 'converted').length : 0,
   };
 
   const getStatusColor = (status: string) => {

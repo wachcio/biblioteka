@@ -8,6 +8,7 @@ import type {
   Book,
   Author,
   Reservation,
+  CreateUserRequest,
   Loan,
   CreateBookRequest,
   CreateAuthorRequest,
@@ -17,8 +18,7 @@ import type {
   AdminStats,
   RecentActivity,
   UpdateUserRoleRequest,
-  BulkBookOperation,
-  ExtendLoanRequest
+  BulkBookOperation
 } from '../types';
 
 class ApiService {
@@ -100,6 +100,15 @@ class ApiService {
   async getAllUsers(): Promise<User[]> {
     const response = await this.api.get<User[]>('/users');
     return response.data;
+  }
+
+  async createUser(data: CreateUserRequest): Promise<User> {
+    const response = await this.api.post<User>('/users', data);
+    return response.data;
+  }
+
+  async deleteUser(id: number): Promise<void> {
+    await this.api.delete(`/users/${id}`);
   }
 
   // Books methods

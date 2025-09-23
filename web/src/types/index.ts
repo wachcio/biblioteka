@@ -162,3 +162,10 @@ export interface BulkBookOperation {
 export interface ExtendLoanRequest {
   days: number;
 }
+
+export interface CreateUserRequest {
+  name: string;
+  email: string;
+  password: string;
+  role?: 'admin' | 'user';
+}

@@ -7,6 +7,7 @@ import { AuthorsModule } from './authors/authors.module';
 import { BooksModule } from './books/books.module';
 import { ReservationsModule } from './reservations/reservations.module';
 import { LoansModule } from './loans/loans.module';
+import { AdminModule } from './admin/admin.module';
 import { HealthModule } from './health/health.module';
 import { databaseConfig } from './config/database.config';
 
@@ -23,6 +24,7 @@ import { databaseConfig } from './config/database.config';
     BooksModule,
     ReservationsModule,
     LoansModule,
+    AdminModule,
     HealthModule,
   ],
 })

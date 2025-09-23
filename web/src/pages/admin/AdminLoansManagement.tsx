@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiService } from '../../services/api';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import Alert from '../../components/ui/Alert';
-import type { Loan, User, Book, CreateLoanRequest, ExtendLoanRequest } from '../../types';
+import type { Loan, User, Book, CreateLoanRequest } from '../../types';
 
 const AdminLoansManagement: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'returned' | 'overdue'>('all');
@@ -75,7 +75,7 @@ const AdminLoansManagement: React.FC = () => {
   });
 
   // Filter loans
-  const filteredLoans = loans.filter(loan => {
+  const filteredLoans = Array.isArray(loans) ? loans.filter(loan => {
     const matchesStatus = statusFilter === 'all' || loan.status === statusFilter;
     const matchesSearch = !searchTerm ||
       loan.book.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -83,7 +83,7 @@ const AdminLoansManagement: React.FC = () => {
       loan.user.email.toLowerCase().includes(searchTerm.toLowerCase());
 
     return matchesStatus && matchesSearch;
-  });
+  }) : [];
 
   const handleReturn = (id: number) => {
     if (window.confirm('Are you sure you want to mark this loan as returned?')) {
@@ -118,10 +118,10 @@ const AdminLoansManagement: React.FC = () => {
   }
 
   const stats = {
-    total: loans.length,
-    active: loans.filter(l => l.status === 'active').length,
-    returned: loans.filter(l => l.status === 'returned').length,
-    overdue: overdueLoans.length,
+    total: Array.isArray(loans) ? loans.length : 0,
+    active: Array.isArray(loans) ? loans.filter(l => l.status === 'active').length : 0,
+    returned: Array.isArray(loans) ? loans.filter(l => l.status === 'returned').length : 0,
+    overdue: Array.isArray(overdueLoans) ? overdueLoans.length : 0,
   };
 
   const getStatusColor = (status: string, loan?: Loan) => {

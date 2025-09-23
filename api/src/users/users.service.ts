@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import * as argon2 from 'argon2';
 import { User, UserRole } from './entities/user.entity';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -12,9 +13,13 @@ export class UsersService {
     private readonly userRepository: Repository<User>,
   ) {}
 
-  async create(createUserDto: CreateUserDto & { password_hash: string }): Promise<User> {
+  async create(createUserDto: CreateUserDto): Promise<User> {
+    const hashedPassword = await argon2.hash(createUserDto.password);
+
     const user = this.userRepository.create({
-      ...createUserDto,
+      name: createUserDto.name,
+      email: createUserDto.email,
+      password_hash: hashedPassword,
       role: createUserDto.role || UserRole.USER,
     });
 
@@ -32,7 +37,10 @@ export class UsersService {
   }
 
   async findByEmail(email: string): Promise<User | null> {
-    return this.userRepository.findOne({ where: { email } });
+    return this.userRepository.findOne({
+      where: { email },
+      select: ['id', 'name', 'email', 'password_hash', 'role', 'created_at']
+    });
   }
 
   async update(id: number, updateUserDto: UpdateUserDto): Promise<User> {

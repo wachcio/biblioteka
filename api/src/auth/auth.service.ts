@@ -78,10 +78,8 @@ export class AuthService {
       throw new UnauthorizedException('User with this email already exists');
     }
 
-    const hashedPassword = await argon2.hash(registerDto.password);
     const user = await this.usersService.create({
       ...registerDto,
-      password_hash: hashedPassword,
     });
 
     const payload: JwtPayload = {

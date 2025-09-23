@@ -3,11 +3,12 @@ import React from 'react';
 interface AlertProps {
   type: 'success' | 'error' | 'warning' | 'info';
   title?: string;
-  children: React.ReactNode;
+  message?: string;
+  children?: React.ReactNode;
   onClose?: () => void;
 }
 
-const Alert: React.FC<AlertProps> = ({ type, title, children, onClose }) => {
+const Alert: React.FC<AlertProps> = ({ type, title, message, children, onClose }) => {
   const typeStyles = {
     success: {
       container: 'bg-green-50 border-green-200',
@@ -64,7 +65,7 @@ const Alert: React.FC<AlertProps> = ({ type, title, children, onClose }) => {
             <h3 className={`text-sm font-medium ${styles.title}`}>{title}</h3>
           )}
           <div className={`text-sm ${title ? 'mt-1' : ''} ${styles.content}`}>
-            {children}
+            {message || children}
           </div>
         </div>
         {onClose && (

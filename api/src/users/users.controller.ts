@@ -32,10 +32,7 @@ export class UsersController {
   @ApiResponse({ status: 201, description: 'User successfully created' })
   @ApiResponse({ status: 403, description: 'Forbidden - Admin access required' })
   create(@Body() createUserDto: CreateUserDto) {
-    return this.usersService.create({
-      ...createUserDto,
-      password_hash: 'temp_password', // Should be handled properly in production
-    });
+    return this.usersService.create(createUserDto);
   }
 
   @Get()

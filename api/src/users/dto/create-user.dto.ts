@@ -23,6 +23,17 @@ export class CreateUserDto {
   email: string;
 
   @ApiProperty({
+    description: 'User password',
+    example: 'password123',
+    minLength: 6,
+    maxLength: 100
+  })
+  @IsString()
+  @MinLength(6)
+  @MaxLength(100)
+  password: string;
+
+  @ApiProperty({
     description: 'User role',
     enum: UserRole,
     example: UserRole.USER,
