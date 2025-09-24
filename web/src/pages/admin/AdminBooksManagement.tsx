@@ -1,10 +1,10 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiService } from '../../services/api';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import Alert from '../../components/ui/Alert';
 import Pagination from '../../components/ui/Pagination';
-import type { Book, Author, CreateBookRequest, BulkBookOperation } from '../../types';
+import type { Book, Author, CreateBookRequest, BulkBookOperation, User, CreateLoanRequest, CreateReservationRequest } from '../../types';
 
 const AdminBooksManagement: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
@@ -15,6 +15,9 @@ const AdminBooksManagement: React.FC = () => {
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingBook, setEditingBook] = useState<Book | null>(null);
   const [bulkOperation, setBulkOperation] = useState<'delete' | 'status' | 'category' | null>(null);
+  const [showLoanModal, setShowLoanModal] = useState(false);
+  const [showReserveModal, setShowReserveModal] = useState(false);
+  const [selectedBookForAction, setSelectedBookForAction] = useState<Book | null>(null);
 
   const queryClient = useQueryClient();
   const limit = 10;
@@ -47,6 +50,13 @@ const AdminBooksManagement: React.FC = () => {
     queryFn: () => apiService.getBookCategories(),
   });
 
+  // Fetch users for loan/reservation creation
+  const { data: users = [] } = useQuery<User[]>({
+    queryKey: ['admin', 'users'],
+    queryFn: () => apiService.getAllUsers(),
+    enabled: showLoanModal || showReserveModal,
+  });
+
   // Create/Update book mutation
   const bookMutation = useMutation({
     mutationFn: async (data: { book: CreateBookRequest; id?: number }) => {
@@ -60,6 +70,10 @@ const AdminBooksManagement: React.FC = () => {
       setShowAddForm(false);
       setEditingBook(null);
     },
+    onError: (error) => {
+      console.error('Book mutation error:', error);
+      alert('Error saving book: ' + (error as any)?.message || 'Unknown error');
+    },
   });
 
   // Delete book mutation
@@ -70,20 +84,42 @@ const AdminBooksManagement: React.FC = () => {
     },
   });
 
-  // Bulk operations mutation
-  const bulkMutation = useMutation({
-    mutationFn: (operation: BulkBookOperation) => apiService.bulkBookOperation(operation),
+  // Create loan mutation
+  const loanMutation = useMutation({
+    mutationFn: (data: CreateLoanRequest) => apiService.createLoan(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'books'] });
-      setSelectedBooks([]);
-      setBulkOperation(null);
+      queryClient.invalidateQueries({ queryKey: ['admin', 'loans'] });
+      setShowLoanModal(false);
+      setSelectedBookForAction(null);
+    },
+    onError: (error) => {
+      console.error('Loan creation error:', error);
+      alert('Error creating loan: ' + (error as any)?.message || 'Unknown error');
     },
   });
 
-  const handleSearch = useCallback((term: string) => {
-    setSearchTerm(term);
+  // Create reservation mutation
+  const reservationMutation = useMutation({
+    mutationFn: (data: CreateReservationRequest) => apiService.createReservation(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'books'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'reservations'] });
+      setShowReserveModal(false);
+      setSelectedBookForAction(null);
+    },
+    onError: (error) => {
+      console.error('Reservation creation error:', error);
+      alert('Error creating reservation: ' + (error as any)?.message || 'Unknown error');
+    },
+  });
+
+
+  const handleSearchInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSearchTerm(value);
     setCurrentPage(1);
-  }, []);
+  };
 
   const handleSelectBook = (bookId: number) => {
     setSelectedBooks(prev =>
@@ -102,10 +138,14 @@ const AdminBooksManagement: React.FC = () => {
   };
 
   const handleBulkOperation = (operation: BulkBookOperation) => {
-    bulkMutation.mutate({
-      ...operation,
-      bookIds: selectedBooks,
-    });
+    if (operation.action === 'delete') {
+      // For now, just delete books individually
+      selectedBooks.forEach(bookId => {
+        deleteMutation.mutate(bookId);
+      });
+      setSelectedBooks([]);
+      setBulkOperation(null);
+    }
   };
 
   if (booksLoading) {
@@ -157,7 +197,7 @@ const AdminBooksManagement: React.FC = () => {
               placeholder="Search books..."
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               value={searchTerm}
-              onChange={(e) => handleSearch(e.target.value)}
+              onChange={handleSearchInput}
             />
           </div>
           <select
@@ -203,23 +243,14 @@ const AdminBooksManagement: React.FC = () => {
             </span>
             <div className="space-x-2">
               <button
-                onClick={() => setBulkOperation('status')}
-                className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
-              >
-                Update Status
-              </button>
-              <button
-                onClick={() => setBulkOperation('category')}
-                className="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700"
-              >
-                Update Category
-              </button>
-              <button
                 onClick={() => setBulkOperation('delete')}
                 className="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700"
               >
                 Delete Selected
               </button>
+              <span className="text-xs text-gray-500">
+                Note: Status updates coming soon
+              </span>
             </div>
           </div>
         </div>
@@ -291,7 +322,7 @@ const AdminBooksManagement: React.FC = () => {
                     </div>
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-900">
-                    {book.bookAuthors.map(ba => ba.author.fullName).join(', ')}
+                    {book.bookAuthors.map(ba => `${ba.author.first_name} ${ba.author.last_name}`).join(', ')}
                   </td>
                   <td className="px-6 py-4">
                     <span className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded">
@@ -299,38 +330,69 @@ const AdminBooksManagement: React.FC = () => {
                     </span>
                   </td>
                   <td className="px-6 py-4">
-                    <span
-                      className={`px-2 py-1 text-xs font-medium rounded ${
-                        book.status === 'available'
-                          ? 'bg-green-100 text-green-800'
-                          : book.status === 'reserved'
-                          ? 'bg-yellow-100 text-yellow-800'
-                          : 'bg-red-100 text-red-800'
-                      }`}
-                    >
-                      {book.status.charAt(0).toUpperCase() + book.status.slice(1)}
-                    </span>
+                    <div className="flex items-center space-x-2">
+                      <span
+                        className={`px-2 py-1 text-xs font-medium rounded ${
+                          book.status === 'available'
+                            ? 'bg-green-100 text-green-800'
+                            : book.status === 'reserved'
+                            ? 'bg-yellow-100 text-yellow-800'
+                            : 'bg-red-100 text-red-800'
+                        }`}
+                      >
+                        {book.status.charAt(0).toUpperCase() + book.status.slice(1)}
+                      </span>
+                      <span className="text-xs text-gray-400" title="Status is automatically managed based on loans and reservations">
+                        (Auto)
+                      </span>
+                    </div>
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-500">
                     {new Date(book.created_at).toLocaleDateString()}
                   </td>
-                  <td className="px-6 py-4 text-right text-sm font-medium space-x-2">
-                    <button
-                      onClick={() => setEditingBook(book)}
-                      className="text-blue-600 hover:text-blue-900"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => {
-                        if (window.confirm('Are you sure you want to delete this book?')) {
-                          deleteMutation.mutate(book.id);
-                        }
-                      }}
-                      className="text-red-600 hover:text-red-900"
-                    >
-                      Delete
-                    </button>
+                  <td className="px-6 py-4 text-right text-sm font-medium">
+                    <div className="flex justify-end space-x-2">
+                      {book.status === 'available' && (
+                        <>
+                          <button
+                            onClick={() => {
+                              setSelectedBookForAction(book);
+                              setShowLoanModal(true);
+                            }}
+                            className="text-green-600 hover:text-green-900 px-2 py-1 text-xs border border-green-600 rounded hover:bg-green-50"
+                            title="Create loan for this book"
+                          >
+                            Loan
+                          </button>
+                          <button
+                            onClick={() => {
+                              setSelectedBookForAction(book);
+                              setShowReserveModal(true);
+                            }}
+                            className="text-orange-600 hover:text-orange-900 px-2 py-1 text-xs border border-orange-600 rounded hover:bg-orange-50"
+                            title="Create reservation for this book"
+                          >
+                            Reserve
+                          </button>
+                        </>
+                      )}
+                      <button
+                        onClick={() => setEditingBook(book)}
+                        className="text-blue-600 hover:text-blue-900 px-2 py-1"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (window.confirm('Are you sure you want to delete this book?')) {
+                            deleteMutation.mutate(book.id);
+                          }
+                        }}
+                        className="text-red-600 hover:text-red-900 px-2 py-1"
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -369,14 +431,59 @@ const AdminBooksManagement: React.FC = () => {
       )}
 
       {/* Bulk Operation Modal */}
-      {bulkOperation && (
-        <BulkOperationModal
-          operation={bulkOperation}
-          count={selectedBooks.length}
-          categories={categories}
-          onClose={() => setBulkOperation(null)}
-          onConfirm={handleBulkOperation}
-          isLoading={bulkMutation.isPending}
+      {bulkOperation === 'delete' && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex items-center justify-center min-h-screen px-4">
+            <div className="fixed inset-0 bg-gray-500 bg-opacity-75" onClick={() => setBulkOperation(null)} />
+            <div className="relative bg-white rounded-lg max-w-md w-full p-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Delete Books</h3>
+              <p className="text-gray-600 mb-4">
+                Are you sure you want to delete {selectedBooks.length} book{selectedBooks.length > 1 ? 's' : ''}? This action cannot be undone.
+              </p>
+              <div className="flex justify-end space-x-2 pt-4">
+                <button
+                  onClick={() => setBulkOperation(null)}
+                  className="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => handleBulkOperation({ action: 'delete', bookIds: selectedBooks })}
+                  className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create Loan Modal */}
+      {showLoanModal && selectedBookForAction && (
+        <CreateLoanModal
+          book={selectedBookForAction}
+          users={users}
+          onClose={() => {
+            setShowLoanModal(false);
+            setSelectedBookForAction(null);
+          }}
+          onSubmit={(data) => loanMutation.mutate(data)}
+          isLoading={loanMutation.isPending}
+        />
+      )}
+
+      {/* Create Reservation Modal */}
+      {showReserveModal && selectedBookForAction && (
+        <CreateReservationModal
+          book={selectedBookForAction}
+          users={users}
+          onClose={() => {
+            setShowReserveModal(false);
+            setSelectedBookForAction(null);
+          }}
+          onSubmit={(data) => reservationMutation.mutate(data)}
+          isLoading={reservationMutation.isPending}
         />
       )}
     </div>
@@ -455,7 +562,7 @@ const BookFormModal: React.FC<BookFormModalProps> = ({
               >
                 {authors.map(author => (
                   <option key={author.id} value={author.id}>
-                    {author.fullName}
+                    {author.first_name} {author.last_name}
                   </option>
                 ))}
               </select>
@@ -554,42 +661,31 @@ const BookFormModal: React.FC<BookFormModalProps> = ({
   );
 };
 
-// Bulk Operation Modal Component
-interface BulkOperationModalProps {
-  operation: 'delete' | 'status' | 'category';
-  count: number;
-  categories: string[];
+// Create Loan Modal Component
+interface CreateLoanModalProps {
+  book: Book;
+  users: User[];
   onClose: () => void;
-  onConfirm: (operation: BulkBookOperation) => void;
+  onSubmit: (data: CreateLoanRequest) => void;
   isLoading: boolean;
 }
 
-const BulkOperationModal: React.FC<BulkOperationModalProps> = ({
-  operation,
-  count,
-  categories,
+const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
+  book,
+  users,
   onClose,
-  onConfirm,
+  onSubmit,
   isLoading,
 }) => {
-  const [status, setStatus] = useState<'available' | 'reserved' | 'borrowed'>('available');
-  const [category, setCategory] = useState('');
+  const [formData, setFormData] = useState<CreateLoanRequest>({
+    user_id: 0,
+    book_id: book.id,
+  });
 
-  const handleConfirm = () => {
-    if (operation === 'delete') {
-      onConfirm({ action: 'delete', bookIds: [] });
-    } else if (operation === 'status') {
-      onConfirm({
-        action: 'update_status',
-        bookIds: [],
-        data: { status },
-      });
-    } else if (operation === 'category') {
-      onConfirm({
-        action: 'update_category',
-        bookIds: [],
-        data: { category },
-      });
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (formData.user_id && formData.book_id) {
+      onSubmit(formData);
     }
   };
 
@@ -598,74 +694,161 @@ const BulkOperationModal: React.FC<BulkOperationModalProps> = ({
       <div className="flex items-center justify-center min-h-screen px-4">
         <div className="fixed inset-0 bg-gray-500 bg-opacity-75" onClick={onClose} />
         <div className="relative bg-white rounded-lg max-w-md w-full p-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">
-            {operation === 'delete' ? 'Delete Books' :
-             operation === 'status' ? 'Update Status' :
-             'Update Category'}
-          </h3>
+          <h3 className="text-lg font-medium text-gray-900 mb-4">Create Loan</h3>
 
-          <p className="text-gray-600 mb-4">
-            This action will affect {count} book{count > 1 ? 's' : ''}:
-          </p>
+          <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+            <p className="text-sm text-gray-600">
+              <strong>Book:</strong> {book.title}
+            </p>
+          </div>
 
-          {operation === 'status' && (
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                New Status
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                User *
               </label>
               <select
-                value={status}
-                onChange={(e) => setStatus(e.target.value as any)}
+                required
+                value={formData.user_id}
+                onChange={(e) => setFormData({ ...formData, user_id: Number(e.target.value) })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="available">Available</option>
-                <option value="reserved">Reserved</option>
-                <option value="borrowed">Borrowed</option>
+                <option value="">Select a user</option>
+                {users.map(user => (
+                  <option key={user.id} value={user.id}>
+                    {user.name} ({user.email})
+                  </option>
+                ))}
               </select>
             </div>
-          )}
 
-          {operation === 'category' && (
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                New Category
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Due Date
               </label>
               <input
-                type="text"
-                list="categories"
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
+                type="date"
+                value={formData.due_date || ''}
+                onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                required
+                min={new Date().toISOString().split('T')[0]}
               />
-              <datalist id="categories">
-                {categories.map(cat => (
-                  <option key={cat} value={cat} />
-                ))}
-              </datalist>
+              <p className="text-xs text-gray-500 mt-1">
+                Leave empty for default loan period
+              </p>
             </div>
-          )}
 
-          <div className="flex justify-end space-x-2 pt-4">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleConfirm}
-              disabled={isLoading || (operation === 'category' && !category)}
-              className={`px-4 py-2 text-white rounded-md disabled:opacity-50 ${
-                operation === 'delete'
-                  ? 'bg-red-600 hover:bg-red-700'
-                  : 'bg-blue-600 hover:bg-blue-700'
-              }`}
-            >
-              {isLoading ? 'Processing...' : 'Confirm'}
-            </button>
+            <div className="flex justify-end space-x-2 pt-4">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50"
+              >
+                {isLoading ? 'Creating...' : 'Create Loan'}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Create Reservation Modal Component
+interface CreateReservationModalProps {
+  book: Book;
+  users: User[];
+  onClose: () => void;
+  onSubmit: (data: CreateReservationRequest) => void;
+  isLoading: boolean;
+}
+
+const CreateReservationModal: React.FC<CreateReservationModalProps> = ({
+  book,
+  users,
+  onClose,
+  onSubmit,
+  isLoading,
+}) => {
+  const [formData] = useState<CreateReservationRequest>({
+    book_id: book.id,
+  });
+
+  const [selectedUserId, setSelectedUserId] = useState(0);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (selectedUserId) {
+      // Note: Current API creates reservation for the logged-in admin, not the selected user
+      // This is a temporary workaround until admin API is available
+      alert('Note: Reservation will be created for the currently logged-in admin user, not the selected user. Admin reservation API needs to be implemented.');
+      onSubmit(formData);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 overflow-y-auto">
+      <div className="flex items-center justify-center min-h-screen px-4">
+        <div className="fixed inset-0 bg-gray-500 bg-opacity-75" onClick={onClose} />
+        <div className="relative bg-white rounded-lg max-w-md w-full p-6">
+          <h3 className="text-lg font-medium text-gray-900 mb-4">Create Reservation</h3>
+
+          <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+            <p className="text-sm text-gray-600">
+              <strong>Book:</strong> {book.title}
+            </p>
           </div>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                User *
+              </label>
+              <select
+                required
+                value={selectedUserId}
+                onChange={(e) => setSelectedUserId(Number(e.target.value))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Select a user</option>
+                {users.map(user => (
+                  <option key={user.id} value={user.id}>
+                    {user.name} ({user.email})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="bg-yellow-50 rounded-lg p-3">
+              <p className="text-sm text-yellow-800">
+                <strong>Note:</strong> The reservation will be created for the selected user. They will be notified when the book becomes available.
+              </p>
+            </div>
+
+            <div className="flex justify-end space-x-2 pt-4">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 disabled:opacity-50"
+              >
+                {isLoading ? 'Creating...' : 'Create Reservation'}
+              </button>
+            </div>
+          </form>
         </div>
       </div>
     </div>

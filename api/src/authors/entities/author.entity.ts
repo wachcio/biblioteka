@@ -32,4 +32,11 @@ export class Author {
   get fullName(): string {
     return `${this.first_name} ${this.last_name}`;
   }
+
+  toJSON() {
+    return {
+      ...this,
+      fullName: this.fullName,
+    };
+  }
 }
