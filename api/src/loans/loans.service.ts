@@ -240,11 +240,11 @@ export class LoansService {
       throw new BadRequestException('Due date must be in the future');
     }
 
-    // Check if the extension is reasonable (e.g., max 30 days from now)
-    const maxDueDate = new Date();
+    // Check if the extension is reasonable (e.g., max 30 days from current due date)
+    const maxDueDate = new Date(loan.due_date);
     maxDueDate.setDate(maxDueDate.getDate() + 30);
     if (dueDate > maxDueDate) {
-      throw new BadRequestException('Due date cannot be more than 30 days from now');
+      throw new BadRequestException('Due date cannot be more than 30 days from current due date');
     }
 
     return this.update(id, { due_date: newDueDate });

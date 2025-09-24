@@ -208,8 +208,8 @@ class ApiService {
   }
 
   async getAllLoans(): Promise<Loan[]> {
-    const response = await this.api.get<Loan[]>('/loans');
-    return response.data;
+    const response = await this.api.get<{ loans: Loan[], total: number }>('/loans');
+    return response.data.loans;
   }
 
   async getOverdueLoans(): Promise<Loan[]> {
@@ -223,12 +223,18 @@ class ApiService {
   }
 
   async returnLoan(id: number): Promise<Loan> {
-    const response = await this.api.patch<Loan>(`/loans/${id}/return`);
+    const response = await this.api.post<Loan>(`/loans/${id}/return`);
     return response.data;
   }
 
   async extendLoan(id: number, days: number): Promise<Loan> {
-    const response = await this.api.patch<Loan>(`/loans/${id}/extend`, { days });
+    // Get current loan to use its due_date
+    const currentLoan = await this.api.get<Loan>(`/loans/${id}`);
+    const newDueDate = new Date(currentLoan.data.due_date);
+    newDueDate.setDate(newDueDate.getDate() + days);
+    const response = await this.api.post<Loan>(`/loans/${id}/extend`, {
+      newDueDate: newDueDate.toISOString()
+    });
     return response.data;
   }
 
